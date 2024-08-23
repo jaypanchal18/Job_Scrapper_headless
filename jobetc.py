@@ -82,7 +82,7 @@ def scrape_and_send_jobs():
     for category, channel_name in category_to_channel_name.items():
         print(f"Processing category: {category}")
 
-        # Initialize WebDriver for each category
+       
         driver = initialize_webdriver()
         
         new_jobs = []  # List to keep track of jobs to be sent to Slack
