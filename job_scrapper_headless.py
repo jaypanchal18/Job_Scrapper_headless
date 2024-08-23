@@ -81,7 +81,7 @@ def scrape_and_send_jobs():
     for category, channel_name in category_to_channel_name.items():
         print(f"Processing category: {category}")
 
-        # Initialize WebDriver for each category
+       
         driver = initialize_webdriver()
         
         # Create or select the MongoDB collection for the current category
