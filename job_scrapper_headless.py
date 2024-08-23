@@ -28,8 +28,8 @@ mongo_client = MongoClient("mongodb://localhost:27017/")
 db = mongo_client["invite"]
 
 # Slack bot token and client setup
-slack_bot_token = "xoxb-7599666633990-7615567628180-vHIeiVcWSyu9XJwUsmSWh4BL"  # Update with your actual token
-slack_client = WebClient(token=slack_bot_token)
+#slack_bot_token = "xoxb-7599666633990-7615567628180-vHIeiVcWSyu9XJwUsmSWh4BL"  # Update with your actual token
+#slack_client = WebClient(token=slack_bot_token)
 
 # Mapping of categories to Slack channel names
 category_to_channel_name = {
