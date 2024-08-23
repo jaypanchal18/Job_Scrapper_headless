@@ -1,4 +1,4 @@
-schedule==1.1.0
-selenium==4.10.0
-pymongo==4.4.0
-slack-sdk==3.21.0
+selenium==4.13.0
+pymysql==2.1.1
+slack_sdk==3.23.0
+schedule==1.2.0
