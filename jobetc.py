@@ -1,31 +1,31 @@
 import schedule
 import time
 import random
+import pymysql
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from pymongo import MongoClient
-from pymongo.errors import DuplicateKeyError
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Function to initialize WebDriver
 def initialize_webdriver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Uncomment if you want to run Chrome in headless mode
-    chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration
-    chrome_options.add_argument("--no-sandbox")  # Disable sandboxing (often needed in headless mode)
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36")
+    # chrome_options.add_argument("--headless")  # Uncomment if you want to run Chrome in headless mode
     chrome_driver_path = 'C:/webdrivers/chromedriver.exe'
     return webdriver.Chrome(service=Service(chrome_driver_path), options=chrome_options)
 
-# MongoDB setup
-mongo_client = MongoClient("mongodb://localhost:27017/")
-db = mongo_client["invite"]
+# MySQL setup
+connection = pymysql.connect(
+    host='localhost',
+    user='root',
+    password='1234',
+    database='job_scraper'
+)
+cursor = connection.cursor()
 
 # Slack bot token and client setup
 slack_bot_token = "xoxb-7599666633990-7615567628180-vHIeiVcWSyu9XJwUsmSWh4BL"  # Update with your actual token
@@ -33,7 +33,8 @@ slack_client = WebClient(token=slack_bot_token)
 
 # Mapping of categories to Slack channel names
 category_to_channel_name = {
-    "node": "upwork_feed_node"
+    "node": "upwork_feed_node",
+    "python": "upwork_feed_python"
 }
 
 def get_channel_ids_by_names():
@@ -84,12 +85,6 @@ def scrape_and_send_jobs():
         # Initialize WebDriver for each category
         driver = initialize_webdriver()
         
-        # Create or select the MongoDB collection for the current category
-        collection = db[category]
-        
-        # Ensure the "link" field is unique by creating an index
-        collection.create_index("link", unique=True)
-        
         new_jobs = []  # List to keep track of jobs to be sent to Slack
         
         try:
@@ -120,15 +115,24 @@ def scrape_and_send_jobs():
                     "title": titles[i].text.strip() if i < len(titles) else "",
                     "description": descriptions[i].text.strip() if i < len(descriptions) else "",
                     "skills": skills,
-                    "link": job_links[i].get_attribute("href") if i < len(job_links) else ""
+                    "link": job_links[i].get_attribute("href") if i < len(job_links) else "",
+                    "category": category  # Add the category to the job entry
                 }
 
                 try:
-                    collection.insert_one(job_entry)
-                    print(f"Inserted job: {job_entry['title']} into MongoDB.")
+                    # Insert into MySQL database
+                    cursor.execute(
+                        """
+                        INSERT INTO jobs (title, description, skills, link, category) 
+                        VALUES (%s, %s, %s, %s, %s)
+                        """, 
+                        (job_entry['title'], job_entry['description'], job_entry['skills'], job_entry['link'], job_entry['category'])
+                    )
+                    connection.commit()
+                    print(f"Inserted job: {job_entry['title']} into MySQL.")
                     new_jobs.append(job_entry)  # Add to new_jobs only if successfully inserted
-                except DuplicateKeyError:
-                    print(f"Duplicate job found and skipped: {job_entry['title']}")
+                except pymysql.MySQLError as e:
+                    print(f"Error inserting job: {e}")
 
         except Exception as e:
             print(f"An error occurred for category {category}: {e}")
@@ -153,7 +157,7 @@ def scrape_and_send_jobs():
 scrape_and_send_jobs()
 
 # Schedule the job to run every 5 minutes
-schedule.every(5).minutes.do(scrape_and_send_jobs)
+schedule.every(1).minutes.do(scrape_and_send_jobs)
 
 while True:
     schedule.run_pending()
